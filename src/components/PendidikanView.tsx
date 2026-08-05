@@ -363,13 +363,28 @@ export default function PendidikanView({
         });
         deDuplicatedKels.push(...orphanKels);
 
-        // Delete duplicate extra default classes from persistent storage
+        // Deduplicate non-default and all classes per lembaga by normalized name
+        const finalKels: Kelas[] = [];
+        const seenClassKeys = new Set<string>();
+
+        for (const k of deDuplicatedKels) {
+          const key = `${k.lembagaId || 'orphan'}_${k.nama.trim().toLowerCase()}`;
+          if (!seenClassKeys.has(key)) {
+            seenClassKeys.add(key);
+            finalKels.push(k);
+          } else {
+            console.log(`Self-healing: Deleting duplicate class '${k.nama}' with ID: ${k.id}`);
+            duplicatesToDelete.push(k.id);
+          }
+        }
+
+        // Delete duplicate classes from persistent storage
         for (const dupId of duplicatesToDelete) {
-          console.log(`Self-healing: Deleting duplicate default class with ID: ${dupId}`);
+          console.log(`Self-healing: Deleting duplicate class with ID: ${dupId}`);
           deleteTableRow('kelas', 'smartsantri_kelas', dupId);
         }
 
-        if (isMounted) setKelasList(deDuplicatedKels);
+        if (isMounted) setKelasList(finalKels);
 
         const [catData, grpData, assData] = await Promise.all([
           fetchTableData<KategoriRombel>('kategori_rombel', 'smartsantri_rombel_categories', INITIAL_ROMBEL_CAT),

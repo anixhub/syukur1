@@ -751,7 +751,16 @@ export default function LembagaKelasSub({
   // Helper: Get classes for a specific institution
   const getClassesOfLembaga = (lembagaId: string) => {
     const list = kelasList.filter(k => getClsLembagaId(k) === String(lembagaId));
-    const hasDefault = list.some(k => isDefaultClass(k));
+    const uniqueList: Kelas[] = [];
+    const seenNames = new Set<string>();
+    for (const item of list) {
+      const normName = (item.nama || '').trim().toLowerCase();
+      if (!seenNames.has(normName)) {
+        seenNames.add(normName);
+        uniqueList.push(item);
+      }
+    }
+    const hasDefault = uniqueList.some(k => isDefaultClass(k));
     if (!hasDefault) {
       const defaultCls: Kelas = {
         id: `calon-${lembagaId}`,
@@ -761,9 +770,9 @@ export default function LembagaKelasSub({
         tingkatan: 'Lainnya',
         isDefault: true
       };
-      return [defaultCls, ...list];
+      return [defaultCls, ...uniqueList];
     }
-    return list;
+    return uniqueList;
   };
 
   // Helper: Get students belonging to a specific class in an institution
@@ -4126,6 +4135,8 @@ export default function LembagaKelasSub({
                         .filter(sec => sec.students.length > 0);
 
                       let renderedCount = 0;
+                      // Pre-render 20 additional buffer items ahead in DOM for 100% instant, lag-free scrolling
+                      const renderTargetLimit = modalDisplayLimit + 20;
 
                       return (
                         <>
@@ -4134,8 +4145,8 @@ export default function LembagaKelasSub({
                             const isAllSectionSelected = sec.students.length > 0 && sec.students.every(s => selectedModalStudentIds.includes(s.id));
 
                             let visibleStudents: Santri[] = [];
-                            if (!isCollapsed && renderedCount < modalDisplayLimit) {
-                              const capacity = modalDisplayLimit - renderedCount;
+                            if (!isCollapsed && renderedCount < renderTargetLimit) {
+                              const capacity = renderTargetLimit - renderedCount;
                               visibleStudents = sec.students.slice(0, capacity);
                               renderedCount += visibleStudents.length;
                             }

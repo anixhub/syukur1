@@ -2465,6 +2465,8 @@ export default function RombelSub({
                   .filter(sec => sec.items.length > 0);
 
                 let renderedCount = 0;
+                // Pre-render 20 additional buffer items ahead in DOM for 100% instant, lag-free scrolling
+                const renderTargetLimit = modalDisplayLimit + 20;
 
                 return (
                   <>
@@ -2512,8 +2514,8 @@ export default function RombelSub({
                             const isAllSectionSelected = section.items.length > 0 && section.items.every(s => selectedModalStudentIds.includes(s.id));
 
                             let visibleItems: Santri[] = [];
-                            if (!isCollapsed && renderedCount < modalDisplayLimit) {
-                              const capacity = modalDisplayLimit - renderedCount;
+                            if (!isCollapsed && renderedCount < renderTargetLimit) {
+                              const capacity = renderTargetLimit - renderedCount;
                               visibleItems = section.items.slice(0, capacity);
                               renderedCount += visibleItems.length;
                             }
