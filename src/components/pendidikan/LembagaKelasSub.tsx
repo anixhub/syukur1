@@ -466,6 +466,12 @@ export default function LembagaKelasSub({
   const [addMemberGroupFilter, setAddMemberGroupFilter] = useState<string>('Semua');
   const [selectedModalStudentIds, setSelectedModalStudentIds] = useState<string[]>([]);
   const [collapsedModalSections, setCollapsedModalSections] = useState<Record<string, boolean>>({});
+  const [modalDisplayLimit, setModalDisplayLimit] = useState<number>(20);
+
+  // Reset modal display limit whenever modal opens or search/filter changes
+  useEffect(() => {
+    setModalDisplayLimit(20);
+  }, [isAddMemberModalOpen, addMemberSearch, addMemberGroupFilter]);
 
   // Toast Notification
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -1543,32 +1549,18 @@ export default function LembagaKelasSub({
     const map = new Map<string, { key: string; label: string }>();
     const matchingLembagas = lembagasList.filter(l => getLembagaJenis(l) === 'Formal' && isGenderMatch(l.gender, selectedGender));
     
-    santriList.forEach(s => {
-      if (!isGenderMatch(s.gender, selectedGender)) return;
-      const l = matchingLembagas.find(lem => isStudentInLembaga(s, lem));
-      if (!l) {
-        map.set(s.id, { key: 'Belum', label: 'Belum Tergabung' });
-        return;
-      }
-
+    matchingLembagas.forEach(l => {
       const classes = getClassesOfLembaga(l.id);
       const getKodeBadge = (lem: Lembaga) => `[${(lem.kode || generate4LetterKode(lem.nama)).toUpperCase().slice(0, 4)}]`;
 
-      const c = classes.find(cls => {
-        const students = getStudentsInClass(cls, l);
-        return students.some(st => st.id === s.id);
+      classes.forEach(c => {
+        const studentsInC = getStudentsInClass(c, l);
+        studentsInC.forEach(st => {
+          if (!map.has(st.id)) {
+            map.set(st.id, { key: `${l.id}:${c.id}`, label: `${getKodeBadge(l)} ${c.nama}` });
+          }
+        });
       });
-
-      if (c) {
-        map.set(s.id, { key: `${l.id}:${c.id}`, label: `${getKodeBadge(l)} ${c.nama}` });
-      } else {
-        const defaultC = classes.find(isDefaultClass) || classes[0];
-        if (defaultC) {
-          map.set(s.id, { key: `${l.id}:${defaultC.id}`, label: `${getKodeBadge(l)} ${defaultC.nama}` });
-        } else {
-          map.set(s.id, { key: 'Belum', label: 'Belum Tergabung' });
-        }
-      }
     });
 
     return map;
@@ -4033,8 +4025,16 @@ export default function LembagaKelasSub({
                     </div>
                   </div>
 
-                  {/* Left Scroll List */}
-                  <div className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-1.5">
+                  {/* Left Scroll List with infinite scroll pagination */}
+                  <div 
+                    className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-1.5"
+                    onScroll={(e) => {
+                      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                      if (scrollTop + clientHeight >= scrollHeight - 80) {
+                        setModalDisplayLimit(prev => Math.min(prev + 20, searchedEligibleStudents.length));
+                      }
+                    }}
+                  >
                     {(() => {
                       if (searchedEligibleStudents.length === 0) {
                         return (
@@ -4125,127 +4125,140 @@ export default function LembagaKelasSub({
                         .map(([key, data]) => ({ key, label: data.label, students: data.students }))
                         .filter(sec => sec.students.length > 0);
 
-                      return activeSections.map(sec => {
-                        const isCollapsed = !!collapsedModalSections[sec.key];
-                        const isAllSectionSelected = sec.students.length > 0 && sec.students.every(s => selectedModalStudentIds.includes(s.id));
+                      let renderedCount = 0;
 
-                        return (
-                          <div key={`section-${sec.key}`} className="space-y-1">
-                            {/* Segment Header (Explorer VCS style) */}
-                            <div 
-                              onClick={() => {
-                                setCollapsedModalSections(prev => ({ ...prev, [sec.key]: !prev[sec.key] }));
-                              }}
-                              className="sticky top-0 z-30 px-2.5 py-1.5 bg-slate-100 border-y border-slate-200/90 rounded-lg flex items-center justify-between text-[11px] font-bold text-slate-700 shadow-2xs select-none cursor-pointer hover:bg-slate-200/80 transition-all"
-                            >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <div className="p-0.5 hover:bg-slate-200/80 rounded text-slate-500 transition-colors shrink-0">
-                                  {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                </div>
-                                <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span className="uppercase tracking-wide truncate">{sec.label}</span>
-                                <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-600 text-[10px] font-extrabold border border-slate-200 shrink-0">
-                                  {sec.students.length}
-                                </span>
-                              </div>
+                      return (
+                        <>
+                          {activeSections.map(sec => {
+                            const isCollapsed = !!collapsedModalSections[sec.key];
+                            const isAllSectionSelected = sec.students.length > 0 && sec.students.every(s => selectedModalStudentIds.includes(s.id));
 
-                              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const sectionIds = sec.students.map(s => s.id);
-                                    if (isAllSectionSelected) {
-                                      setSelectedModalStudentIds(prev => prev.filter(id => !sectionIds.includes(id)));
-                                    } else {
-                                      setSelectedModalStudentIds(prev => Array.from(new Set([...prev, ...sectionIds])));
-                                    }
-                                  }}
-                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                                    isAllSectionSelected
-                                      ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
-                                      : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
-                                  }`}
-                                  title={isAllSectionSelected ? "Batal pilih semua di bagian ini" : "Pilih semua di bagian ini"}
-                                >
-                                  {isAllSectionSelected ? (
-                                    <>
-                                      <CheckSquare className="h-3 w-3 stroke-[2.5]" />
-                                      <span>Terpilih Semua</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Plus className="h-3 w-3 stroke-[2.5]" />
-                                      <span>Tambahkan Semua</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
+                            let visibleStudents: Santri[] = [];
+                            if (!isCollapsed && renderedCount < modalDisplayLimit) {
+                              const capacity = modalDisplayLimit - renderedCount;
+                              visibleStudents = sec.students.slice(0, capacity);
+                              renderedCount += visibleStudents.length;
+                            }
 
-                            {!isCollapsed && sec.students.map((student, sIdx) => {
-                              const isChecked = selectedModalStudentIds.includes(student.id);
-                              return (
+                            return (
+                              <div key={`section-${sec.key}`} className="space-y-1">
+                                {/* Segment Header (Explorer VCS style) */}
                                 <div 
-                                  key={`sec-${sec.key}-${student.id}-${sIdx}`} 
-                                  onClick={() => setSelectedModalStudentIds(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id])}
-                                  className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-3 text-xs ${
-                                    isChecked
-                                      ? 'border-emerald-200 bg-emerald-50/10 shadow-xs'
-                                      : 'border-slate-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
-                                  }`}
+                                  onClick={() => {
+                                    setCollapsedModalSections(prev => ({ ...prev, [sec.key]: !prev[sec.key] }));
+                                  }}
+                                  className="sticky top-0 z-30 px-2.5 py-1.5 bg-slate-100 border-y border-slate-200/90 rounded-lg flex items-center justify-between text-[11px] font-bold text-slate-700 shadow-2xs select-none cursor-pointer hover:bg-slate-200/80 transition-all"
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    {renderStudentAvatar(student)}
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <span
-                                          className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline inline-block w-fit max-w-full"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedSantriForDetail(student);
-                                          }}
-                                          title="Klik untuk melihat detail santri"
-                                        >
-                                          {student.nama}
-                                        </span>
-                                        {student.statusKeanggotaan === 'Alumni' && (
-                                          <span className="px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200/80 shrink-0">
-                                            Alumni
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
-                                        {[student.desa, student.kecamatan, student.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || student.alamat || student.asal || '-'}
-                                      </p>
-                                      <p className="text-[10px] font-semibold mt-0.5 truncate flex items-center gap-1">
-                                        <span className="text-slate-400 font-medium">Kelas saat ini:</span>
-                                        <span className={sec.key !== 'Belum' ? 'text-amber-800 font-bold bg-amber-50/80 px-1.5 py-0.2 rounded border border-amber-200/60' : 'text-slate-400 font-medium'}>
-                                          {sec.label}
-                                        </span>
-                                      </p>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="p-0.5 hover:bg-slate-200/80 rounded text-slate-500 transition-colors shrink-0">
+                                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     </div>
+                                    <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    <span className="uppercase tracking-wide truncate">{sec.label}</span>
+                                    <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-600 text-[10px] font-extrabold border border-slate-200 shrink-0">
+                                      {sec.students.length}
+                                    </span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedModalStudentIds(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]);
-                                    }}
-                                    className={`h-8 w-8 rounded-lg transition-all shrink-0 cursor-pointer flex items-center justify-center border shadow-3xs ${
-                                      isChecked
-                                        ? 'bg-emerald-600 text-white border-emerald-600'
-                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-200/80 hover:border-emerald-600'
-                                    }`}
-                                    title="Pilih Santri"
-                                  >
-                                    <Plus className="h-4 w-4 stroke-[2.5]" />
-                                  </button>
+
+                                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const sectionIds = sec.students.map(s => s.id);
+                                        if (isAllSectionSelected) {
+                                          setSelectedModalStudentIds(prev => prev.filter(id => !sectionIds.includes(id)));
+                                        } else {
+                                          setSelectedModalStudentIds(prev => Array.from(new Set([...prev, ...sectionIds])));
+                                        }
+                                      }}
+                                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                                        isAllSectionSelected
+                                          ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                                          : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
+                                      }`}
+                                      title={isAllSectionSelected ? "Batal pilih semua di bagian ini" : "Pilih semua di bagian ini"}
+                                    >
+                                      {isAllSectionSelected ? (
+                                        <>
+                                          <CheckSquare className="h-3 w-3 stroke-[2.5]" />
+                                          <span>Terpilih Semua</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Plus className="h-3 w-3 stroke-[2.5]" />
+                                          <span>Tambahkan Semua</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      });
+
+                                {!isCollapsed && visibleStudents.map((student, sIdx) => {
+                                  const isChecked = selectedModalStudentIds.includes(student.id);
+                                  return (
+                                    <div 
+                                      key={`sec-${sec.key}-${student.id}-${sIdx}`} 
+                                      onClick={() => setSelectedModalStudentIds(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id])}
+                                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-3 text-xs ${
+                                        isChecked
+                                          ? 'border-emerald-200 bg-emerald-50/10 shadow-xs'
+                                          : 'border-slate-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        {renderStudentAvatar(student)}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <span
+                                              className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline inline-block w-fit max-w-full"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedSantriForDetail(student);
+                                              }}
+                                              title="Klik untuk melihat detail santri"
+                                            >
+                                              {student.nama}
+                                            </span>
+                                            {student.statusKeanggotaan === 'Alumni' && (
+                                              <span className="px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200/80 shrink-0">
+                                                Alumni
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                                            {[student.desa, student.kecamatan, student.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || student.alamat || student.asal || '-'}
+                                          </p>
+                                          <p className="text-[10px] font-semibold mt-0.5 truncate flex items-center gap-1">
+                                            <span className="text-slate-400 font-medium">Kelas saat ini:</span>
+                                            <span className={sec.key !== 'Belum' ? 'text-amber-800 font-bold bg-amber-50/80 px-1.5 py-0.2 rounded border border-amber-200/60' : 'text-slate-400 font-medium'}>
+                                              {sec.label}
+                                            </span>
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedModalStudentIds(prev => prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]);
+                                        }}
+                                        className={`h-8 w-8 rounded-lg transition-all shrink-0 cursor-pointer flex items-center justify-center border shadow-3xs ${
+                                          isChecked
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border-emerald-200/80 hover:border-emerald-600'
+                                        }`}
+                                        title="Pilih Santri"
+                                      >
+                                        <Plus className="h-4 w-4 stroke-[2.5]" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </>
+                      );
                     })()}
                   </div>
                 </div>

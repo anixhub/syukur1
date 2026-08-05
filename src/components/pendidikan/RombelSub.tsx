@@ -87,6 +87,12 @@ export default function RombelSub({
   const [modalKamarFilter, setModalKamarFilter] = useState<string>('Semua');
   const [modalGroupFilter, setModalGroupFilter] = useState<string>('Semua');
   const [collapsedModalSections, setCollapsedModalSections] = useState<Record<string, boolean>>({});
+  const [modalDisplayLimit, setModalDisplayLimit] = useState<number>(20);
+
+  // Reset modal display limit when modal opens or search/filter changes
+  useEffect(() => {
+    setModalDisplayLimit(20);
+  }, [isAddMemberModalOpen, modalStudentSearchQuery, modalKamarFilter, modalGroupFilter]);
 
   // Dropdowns
   const [activeDropdownGroupId, setActiveDropdownGroupId] = useState<string | null>(null);
@@ -2418,7 +2424,6 @@ export default function RombelSub({
                   }
                 };
 
-                // Group students into sections (segmented by Group)
                 const categoryGroups = groupsList.filter(
                   g => g.kategoriId === selectedCategoryId && (!activeGroupForDetail || g.id !== activeGroupForDetail.id)
                 );
@@ -2459,6 +2464,8 @@ export default function RombelSub({
                   .map(([key, data]) => ({ key, label: data.label, items: data.items }))
                   .filter(sec => sec.items.length > 0);
 
+                let renderedCount = 0;
+
                 return (
                   <>
                     <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 rounded-xl mb-1 shrink-0 text-[10px] font-bold text-slate-500">
@@ -2481,7 +2488,15 @@ export default function RombelSub({
                     </div>
 
                     {/* Scrollable segmented list of students */}
-                    <div className="flex-1 overflow-y-auto pr-1 space-y-1.5 mb-2 min-h-0">
+                    <div 
+                      className="flex-1 overflow-y-auto pr-1 space-y-1.5 mb-2 min-h-0"
+                      onScroll={(e) => {
+                        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                        if (scrollTop + clientHeight >= scrollHeight - 80) {
+                          setModalDisplayLimit(prev => Math.min(prev + 20, filteredEligible.length));
+                        }
+                      }}
+                    >
                       {filteredEligible.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
                           <Users className="h-8 w-8 text-slate-300 mb-1.5" />
@@ -2491,151 +2506,160 @@ export default function RombelSub({
                           </p>
                         </div>
                       ) : (
-                        activeSections.map(section => {
-                          const isCollapsed = !!collapsedModalSections[section.key];
-                          const isAllSectionSelected = section.items.length > 0 && section.items.every(s => selectedModalStudentIds.includes(s.id));
+                        <>
+                          {activeSections.map(section => {
+                            const isCollapsed = !!collapsedModalSections[section.key];
+                            const isAllSectionSelected = section.items.length > 0 && section.items.every(s => selectedModalStudentIds.includes(s.id));
 
-                          return (
-                            <div key={`section-${section.key}`} className="space-y-1">
-                              {/* Segment Header (Explorer VCS style) */}
-                              <div 
-                                onClick={() => {
-                                  setCollapsedModalSections(prev => ({ ...prev, [section.key]: !prev[section.key] }));
-                                }}
-                                className="sticky top-0 z-30 px-2.5 py-1.5 bg-slate-100 border-y border-slate-200/90 rounded-lg flex items-center justify-between text-[11px] font-bold text-slate-700 shadow-2xs select-none cursor-pointer hover:bg-slate-200/80 transition-all"
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <div className="p-0.5 hover:bg-slate-200/80 rounded text-slate-500 transition-colors shrink-0">
-                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                  </div>
-                                  <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                  <span className="uppercase tracking-wide truncate">{section.label}</span>
-                                  <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-600 text-[10px] font-extrabold border border-slate-200 shrink-0">
-                                    {section.items.length}
-                                  </span>
-                                </div>
+                            let visibleItems: Santri[] = [];
+                            if (!isCollapsed && renderedCount < modalDisplayLimit) {
+                              const capacity = modalDisplayLimit - renderedCount;
+                              visibleItems = section.items.slice(0, capacity);
+                              renderedCount += visibleItems.length;
+                            }
 
-                                <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const sectionIds = section.items.map(s => s.id);
-                                      if (isAllSectionSelected) {
-                                        setSelectedModalStudentIds(prev => prev.filter(id => !sectionIds.includes(id)));
-                                      } else {
-                                        setSelectedModalStudentIds(prev => Array.from(new Set([...prev, ...sectionIds])));
-                                      }
-                                    }}
-                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                                      isAllSectionSelected
-                                        ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
-                                        : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
-                                    }`}
-                                    title={isAllSectionSelected ? "Batal pilih semua di kelompok ini" : "Pilih semua di kelompok ini"}
-                                  >
-                                    {isAllSectionSelected ? (
-                                      <>
-                                        <CheckSquare className="h-3 w-3 stroke-[2.5]" />
-                                        <span>Terpilih Semua</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Plus className="h-3 w-3 stroke-[2.5]" />
-                                        <span>Tambahkan Semua</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Section Items */}
-                              {!isCollapsed && section.items.map(s => {
-                              const isChecked = selectedModalStudentIds.includes(s.id);
-                              const isAssignedToOtherGroupInCat = assignmentsList.some(a => a.santriId === s.id && a.kategoriId === selectedCategoryId && a.kelompokId !== activeGroupForDetail.id);
-                              
-                              // Find name of current group if registered in other group under same category
-                              const otherGroupName = (() => {
-                                if (!isAssignedToOtherGroupInCat) return null;
-                                const ass = assignmentsList.find(a => a.santriId === s.id && a.kategoriId === selectedCategoryId);
-                                if (!ass) return null;
-                                const found = groupsList.find(g => g.id === ass.kelompokId);
-                                return found ? found.nama : null;
-                              })();
-
-                              return (
-                                <div
-                                  key={`eligible-${s.id}`}
+                            return (
+                              <div key={`section-${section.key}`} className="space-y-1">
+                                {/* Segment Header (Explorer VCS style) */}
+                                <div 
                                   onClick={() => {
-                                    setSelectedModalStudentIds(prev =>
-                                      prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
-                                    );
+                                    setCollapsedModalSections(prev => ({ ...prev, [section.key]: !prev[section.key] }));
                                   }}
-                                  className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
-                                    isChecked
-                                      ? 'border-emerald-200 bg-emerald-50/10 shadow-xs'
-                                      : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50'
-                                  }`}
+                                  className="sticky top-0 z-30 px-2.5 py-1.5 bg-slate-100 border-y border-slate-200/90 rounded-lg flex items-center justify-between text-[11px] font-bold text-slate-700 shadow-2xs select-none cursor-pointer hover:bg-slate-200/80 transition-all"
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className={`h-4 w-4 rounded border flex items-center justify-center transition-all shrink-0 ${
-                                      isChecked
-                                        ? 'bg-emerald-600 border-emerald-600 text-white'
-                                        : 'border-slate-300 bg-white'
-                                    }`}>
-                                      {isChecked && <CheckSquare className="h-2.5 w-2.5 stroke-[3px]" />}
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="p-0.5 hover:bg-slate-200/80 rounded text-slate-500 transition-colors shrink-0">
+                                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     </div>
+                                    <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    <span className="uppercase tracking-wide truncate">{section.label}</span>
+                                    <span className="px-1.5 py-0.2 rounded-full bg-white text-slate-600 text-[10px] font-extrabold border border-slate-200 shrink-0">
+                                      {section.items.length}
+                                    </span>
+                                  </div>
 
-                                    <img
-                                      src={s.filePasFoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
-                                      alt={s.nama}
-                                      referrerPolicy="no-referrer"
-                                      className="h-7 w-7 rounded-full object-cover shrink-0 border border-slate-200"
-                                    />
+                                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const sectionIds = section.items.map(s => s.id);
+                                        if (isAllSectionSelected) {
+                                          setSelectedModalStudentIds(prev => prev.filter(id => !sectionIds.includes(id)));
+                                        } else {
+                                          setSelectedModalStudentIds(prev => Array.from(new Set([...prev, ...sectionIds])));
+                                        }
+                                      }}
+                                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                                        isAllSectionSelected
+                                          ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                                          : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400'
+                                      }`}
+                                      title={isAllSectionSelected ? "Batal pilih semua di kelompok ini" : "Pilih semua di kelompok ini"}
+                                    >
+                                      {isAllSectionSelected ? (
+                                        <>
+                                          <CheckSquare className="h-3 w-3 stroke-[2.5]" />
+                                          <span>Terpilih Semua</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Plus className="h-3 w-3 stroke-[2.5]" />
+                                          <span>Tambahkan Semua</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
 
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center">
-                                        <span
-                                          className="text-xs font-bold text-slate-850 truncate leading-tight cursor-pointer hover:text-indigo-700 hover:underline inline-block w-fit max-w-full"
+                                {/* Section Items */}
+                                {!isCollapsed && visibleItems.map(s => {
+                                  const isChecked = selectedModalStudentIds.includes(s.id);
+                                  const isAssignedToOtherGroupInCat = assignmentsList.some(a => a.santriId === s.id && a.kategoriId === selectedCategoryId && a.kelompokId !== activeGroupForDetail.id);
+                                  
+                                  // Find name of current group if registered in other group under same category
+                                  const otherGroupName = (() => {
+                                    if (!isAssignedToOtherGroupInCat) return null;
+                                    const ass = assignmentsList.find(a => a.santriId === s.id && a.kategoriId === selectedCategoryId);
+                                    if (!ass) return null;
+                                    const found = groupsList.find(g => g.id === ass.kelompokId);
+                                    return found ? found.nama : null;
+                                  })();
+
+                                  return (
+                                    <div
+                                      key={`eligible-${s.id}`}
+                                      onClick={() => {
+                                        setSelectedModalStudentIds(prev =>
+                                          prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                        );
+                                      }}
+                                      className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                        isChecked
+                                          ? 'border-emerald-200 bg-emerald-50/10 shadow-xs'
+                                          : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <div className={`h-4 w-4 rounded border flex items-center justify-center transition-all shrink-0 ${
+                                          isChecked
+                                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                                            : 'border-slate-300 bg-white'
+                                        }`}>
+                                          {isChecked && <CheckSquare className="h-2.5 w-2.5 stroke-[3px]" />}
+                                        </div>
+
+                                        <img
+                                          src={s.filePasFoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
+                                          alt={s.nama}
+                                          referrerPolicy="no-referrer"
+                                          className="h-7 w-7 rounded-full object-cover shrink-0 border border-slate-200"
+                                        />
+
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center">
+                                            <span
+                                              className="text-xs font-bold text-slate-850 truncate leading-tight cursor-pointer hover:text-indigo-700 hover:underline inline-block w-fit max-w-full"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedSantriForDetail(s);
+                                              }}
+                                              title="Klik untuk melihat detail santri"
+                                            >
+                                              {s.nama}
+                                            </span>
+                                          </div>
+                                          <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                                            <span className="font-medium text-slate-700">
+                                              {[s.desa, s.kecamatan, s.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || s.alamat || s.asal || '-'}
+                                            </span>
+                                            <span className="mx-1 text-slate-300">|</span>
+                                            <span className={`font-semibold ${otherGroupName ? 'text-amber-700 font-bold' : 'text-slate-400 font-normal'}`}>
+                                              {otherGroupName || 'Belum tergabung'}
+                                            </span>
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2 shrink-0 pl-2" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setSelectedSantriForDetail(s);
                                           }}
-                                          title="Klik untuk melihat detail santri"
+                                          className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:scale-95 transition-all cursor-pointer bg-transparent"
+                                          title="Lihat Detail Biodata"
                                         >
-                                          {s.nama}
-                                        </span>
+                                          <Eye className="h-4 w-4" />
+                                        </button>
                                       </div>
-                                      <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
-                                        <span className="font-medium text-slate-700">
-                                          {[s.desa, s.kecamatan, s.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || s.alamat || s.asal || '-'}
-                                        </span>
-                                        <span className="mx-1 text-slate-300">|</span>
-                                        <span className={`font-semibold ${otherGroupName ? 'text-amber-700 font-bold' : 'text-slate-400 font-normal'}`}>
-                                          {otherGroupName || 'Belum tergabung'}
-                                        </span>
-                                      </p>
                                     </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 shrink-0 pl-2" onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedSantriForDetail(s);
-                                      }}
-                                      className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 active:scale-95 transition-all cursor-pointer bg-transparent"
-                                      title="Lihat Detail Biodata"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </>
                       )}
                     </div>
 
