@@ -437,6 +437,9 @@ export default function LembagaKelasSub({
 
   const renderScrollButtons = (isFloating: boolean = false) => {
     if (!canScrollRight) return null;
+    if (isScrolled && !isFloating) return null;
+    if (!isScrolled && isFloating) return null;
+
     return (
       <button
         id={isFloating ? "table-scroll-right-btn-floating" : "table-scroll-right-btn"}
@@ -447,7 +450,7 @@ export default function LembagaKelasSub({
         }}
         className={`absolute right-0 translate-x-1/2 ${
           isFloating ? 'top-1/2 -translate-y-1/2' : 'top-[26px] -translate-y-1/2'
-        } z-[100] flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer opacity-100`}
+        } z-40 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all cursor-pointer opacity-100`}
         title="Gulir Kanan"
       >
         <ChevronRight className="h-4 w-4 stroke-[2.5] translate-x-[0.5px]" />

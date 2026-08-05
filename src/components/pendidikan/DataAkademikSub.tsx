@@ -1339,14 +1339,14 @@ export default function DataAkademikSub({
         </div>
 
         {/* Scroll Left Button placed on right side of 'nama' header column */}
-        {key === 'nama' && canScrollLeft && (
+        {key === 'nama' && canScrollLeft && !isScrolled && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               scrollTable('left');
             }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[40] flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-40 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100"
             title="Gulir Kiri"
           >
             <ChevronLeft className="h-4 w-4 stroke-[2.5] -translate-x-[0.5px]" />
@@ -1414,6 +1414,9 @@ export default function DataAkademikSub({
 
   const renderScrollButtons = (isFloating: boolean = false) => {
     if (!canScrollRight) return null;
+    if (isScrolled && !isFloating) return null;
+    if (!isScrolled && isFloating) return null;
+
     return (
       <button
         id={isFloating ? "table-scroll-right-btn-floating" : "table-scroll-right-btn"}
@@ -1424,7 +1427,7 @@ export default function DataAkademikSub({
         }}
         className={`absolute right-0 translate-x-1/2 ${
           isFloating ? 'top-1/2 -translate-y-1/2' : 'top-[26px] -translate-y-1/2'
-        } z-[100] flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100`}
+        } z-40 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100`}
         title="Gulir Kanan"
       >
         <ChevronRight className="h-4 w-4 stroke-[2.5] translate-x-[0.5px]" />

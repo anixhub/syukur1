@@ -1089,6 +1089,9 @@ export default function DataKamarSantriSub({
 
   const renderScrollButtons = (isFloating: boolean) => {
     if (!canScrollRight) return null;
+    if (isScrolled && !isFloating) return null;
+    if (!isScrolled && isFloating) return null;
+
     return (
       <button
         id={
@@ -1105,7 +1108,7 @@ export default function DataKamarSantriSub({
           isFloating
             ? "top-1/2 -translate-y-1/2"
             : "top-[26px] -translate-y-1/2"
-        } z-[100] flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100`}
+        } z-40 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-md transition-all duration-200 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer opacity-100`}
         title="Gulir Kanan"
       >
         <ChevronRight className="h-4 w-4 stroke-[2.5] translate-x-[0.5px]" />
