@@ -170,7 +170,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-[100] w-full bg-slate-50/90 backdrop-blur-md border-b border-slate-200/60 shadow-2xs">
+    <header className="sticky top-0 z-30 w-full bg-slate-50/90 backdrop-blur-md border-b border-slate-200/60 shadow-2xs">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         
         {/* Header Layout */}

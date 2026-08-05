@@ -469,11 +469,11 @@ export default function LembagaKelasSub({
   const [addMemberGroupFilter, setAddMemberGroupFilter] = useState<string>('Semua');
   const [selectedModalStudentIds, setSelectedModalStudentIds] = useState<string[]>([]);
   const [collapsedModalSections, setCollapsedModalSections] = useState<Record<string, boolean>>({});
-  const [modalDisplayLimit, setModalDisplayLimit] = useState<number>(20);
+  const [modalDisplayLimit, setModalDisplayLimit] = useState<number>(100);
 
   // Reset modal display limit whenever modal opens or search/filter changes
   useEffect(() => {
-    setModalDisplayLimit(20);
+    setModalDisplayLimit(100);
   }, [isAddMemberModalOpen, addMemberSearch, addMemberGroupFilter]);
 
   // Toast Notification
@@ -4042,8 +4042,8 @@ export default function LembagaKelasSub({
                     className="flex-1 overflow-y-auto px-2.5 py-1.5 space-y-1.5"
                     onScroll={(e) => {
                       const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                      if (scrollTop + clientHeight >= scrollHeight - 80) {
-                        setModalDisplayLimit(prev => Math.min(prev + 20, searchedEligibleStudents.length));
+                      if (scrollTop + clientHeight >= scrollHeight - 300) {
+                        setModalDisplayLimit(prev => prev + 50);
                       }
                     }}
                   >
@@ -4137,22 +4137,15 @@ export default function LembagaKelasSub({
                         .map(([key, data]) => ({ key, label: data.label, students: data.students }))
                         .filter(sec => sec.students.length > 0);
 
-                      let renderedCount = 0;
-                      // Pre-render 20 additional buffer items ahead in DOM for 100% instant, lag-free scrolling
-                      const renderTargetLimit = modalDisplayLimit + 20;
-
                       return (
                         <>
                           {activeSections.map(sec => {
                             const isCollapsed = !!collapsedModalSections[sec.key];
                             const isAllSectionSelected = sec.students.length > 0 && sec.students.every(s => selectedModalStudentIds.includes(s.id));
 
-                            let visibleStudents: Santri[] = [];
-                            if (!isCollapsed && renderedCount < renderTargetLimit) {
-                              const capacity = renderTargetLimit - renderedCount;
-                              visibleStudents = sec.students.slice(0, capacity);
-                              renderedCount += visibleStudents.length;
-                            }
+                            const visibleStudents = !isCollapsed 
+                              ? sec.students.slice(0, modalDisplayLimit) 
+                              : [];
 
                             return (
                               <div key={`section-${sec.key}`} className="space-y-1">
@@ -4268,6 +4261,30 @@ export default function LembagaKelasSub({
                                     </div>
                                   );
                                 })}
+
+                                {!isCollapsed && sec.students.length > visibleStudents.length && (
+                                  <div className="py-2 px-3 my-1 bg-emerald-50/80 border border-emerald-200/80 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+                                    <span className="font-medium text-[11px] text-slate-700">
+                                      Menampilkan <strong className="text-emerald-700">{visibleStudents.length}</strong> dari <strong className="text-slate-800">{sec.students.length}</strong> santri ({sec.label})
+                                    </span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setModalDisplayLimit(prev => prev + 50)}
+                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                      >
+                                        + Muat 50 Santri Lagi
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setModalDisplayLimit(prev => prev + sec.students.length)}
+                                        className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-[10px] rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
+                                      >
+                                        Muat Semua ({sec.students.length})
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
