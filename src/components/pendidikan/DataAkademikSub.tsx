@@ -1463,22 +1463,6 @@ export default function DataAkademikSub({
       {/* Header with Title and Type Selection Dropdown next to Export */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2">
         <div className="flex items-center gap-3">
-          {/* Icon Export Modal Trigger on the Left */}
-          <button
-            id="btn-export-trigger-akademik"
-            onClick={() => {
-              if (isSelectionMode) return;
-              setIsExportModalOpen(true);
-            }}
-            disabled={isSelectionMode}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition-all shadow-xs cursor-pointer hover:scale-105 active:scale-95 ${
-              isSelectionMode ? 'opacity-40 cursor-not-allowed' : ''
-            }`}
-            title={isSelectionMode ? "Matikan mode pilih untuk mengekspor data" : "Ekspor Data Akademik"}
-          >
-            <Download className="h-5 w-5" />
-          </button>
-
           <div>
             <h1 className="font-display text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
               <span>Data Akademik</span>
@@ -1512,7 +1496,7 @@ export default function DataAkademikSub({
           </div>
         </div>
 
-        {/* Pojok kanan atas: Dropdown untuk memilih Rombel / Akademik Formal / Internal Pondok */}
+        {/* Pojok kanan atas: Dropdown untuk memilih Rombel / Akademik Formal / Internal Pondok & Tombol Eksport Icon Only */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
           
           <select
@@ -1537,22 +1521,22 @@ export default function DataAkademikSub({
             <option value="rombel">Rombongan Belajar</option>
           </select>
 
-          {/* Export Button */}
+          {/* Export Button - Icon Only */}
           <button
+            id="btn-export-trigger-akademik"
             onClick={() => {
               if (isSelectionMode) return;
               setIsExportModalOpen(true);
             }}
             disabled={isSelectionMode}
-            className={`h-10 px-4 rounded-full flex items-center justify-center gap-2 transition-all outline-none font-bold text-xs flex-1 sm:flex-initial sm:w-auto whitespace-nowrap ${
+            className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center transition-all outline-none font-bold text-xs shadow-2xs ${
               isSelectionMode
                 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'
-                : 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 cursor-pointer'
+                : 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 cursor-pointer hover:scale-105 active:scale-95'
             }`}
             title={isSelectionMode ? "Matikan mode pilih untuk mengekspor data" : "Ekspor Data Akademik"}
           >
-            <Download className="h-4 w-4 shrink-0" />
-            <span>Ekspor</span>
+            <Download className="h-4.5 w-4.5 shrink-0" />
           </button>
         </div>
       </div>
