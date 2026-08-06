@@ -181,6 +181,7 @@ export interface KategoriRombel {
   id: string;
   nama: string; // e.g., "Kelompok Ngaji Kitab", "Setoran Hafalan"
   deskripsi?: string;
+  gender?: 'Putra' | 'Putri';
 }
 
 export interface KelompokRombel {
@@ -189,6 +190,7 @@ export interface KelompokRombel {
   nama: string; // e.g., "Kelompok Al-Farabi", "Halaqah B1"
   pembimbing: string; // Ustadz/Ustadzah
   kuota?: number;
+  gender?: 'Putra' | 'Putri';
 }
 
 export interface KelasAssignment {

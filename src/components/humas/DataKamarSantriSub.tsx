@@ -1703,7 +1703,10 @@ export default function DataKamarSantriSub({
             </div>
           ) : (
             <table className="w-full border-collapse text-left text-sm text-slate-600 min-w-[1000px]">
-              <thead className="bg-slate-50 text-xs font-semibold text-slate-400 uppercase tracking-wider select-none">
+              <thead
+                className="bg-slate-50 text-xs font-semibold text-slate-400 uppercase tracking-wider select-none"
+                style={{ visibility: isScrolled ? 'hidden' : 'visible' }}
+              >
                 {renderTableHeadContents("bg-slate-50 text-slate-400")}
               </thead>
               <tbody className="divide-y divide-slate-100">

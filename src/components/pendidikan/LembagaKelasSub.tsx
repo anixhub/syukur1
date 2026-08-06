@@ -882,8 +882,11 @@ export default function LembagaKelasSub({
   // --- Dynamic Unified Institutions Builder ---
   const institutions = useMemo(() => {
     if (activeTab === 'Rombel') {
-      return categoriesList.map(c => {
-        const groups = groupsList.filter(g => g.kategoriId === c.id);
+      const filteredCats = categoriesList.filter(c =>
+        c.gender ? c.gender === selectedGender : selectedGender === 'Putra'
+      );
+      return filteredCats.map(c => {
+        const groups = groupsList.filter(g => g.kategoriId === c.id && (g.gender ? g.gender === selectedGender : selectedGender === 'Putra'));
         const studentCount = groups.reduce((sum, g) => {
           const assignedIds = assignmentsList
             .filter(a => a.kelompokId === g.id)
@@ -932,7 +935,7 @@ export default function LembagaKelasSub({
     if (!selectedLembaga) return [];
     if (activeTab === 'Rombel') {
       return groupsList
-        .filter(g => g.kategoriId === selectedLembaga.id)
+        .filter(g => g.kategoriId === selectedLembaga.id && (g.gender ? g.gender === selectedGender : selectedGender === 'Putra'))
         .map(g => ({
           id: g.id,
           nama: g.nama,
@@ -1135,7 +1138,8 @@ export default function LembagaKelasSub({
           await onAddCategory({
             id: newId,
             nama: lemNama.trim(),
-            deskripsi: lemDeskripsi.trim()
+            deskripsi: lemDeskripsi.trim(),
+            gender: selectedGender
           });
           showToast('Kategori rombel baru berhasil dibuat.');
         }
@@ -1299,7 +1303,8 @@ export default function LembagaKelasSub({
             kategoriId: selectedLembaga.id,
             nama: kelNama.trim(),
             pembimbing: kelWali.trim() || '-',
-            kuota: Number(kelKapasitas)
+            kuota: Number(kelKapasitas),
+            gender: selectedGender
           });
           showToast('Kelompok rombel baru berhasil ditambahkan.');
         }
@@ -3010,7 +3015,7 @@ export default function LembagaKelasSub({
                           >
                             <table className="w-full text-left border-collapse min-w-[1050px]">
                               {/* Table Header - 100% Solid Background */}
-                              <thead>
+                              <thead style={{ visibility: isScrolled ? 'hidden' : 'visible' }}>
                                 {renderTableHeadContents(false)}
                               </thead>
 

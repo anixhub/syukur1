@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -106,6 +106,19 @@ export default function DataAkademikSub({
   }, [genderFilterProp]);
 
   const canWriteCurrent = genderFilter === 'Putra' ? canWritePutra : canWritePutri;
+
+  // Filter categories and groups by gender
+  const filteredCategories = useMemo(() => {
+    return categoriesList.filter(c =>
+      c.gender ? c.gender === genderFilter : genderFilter === 'Putra'
+    );
+  }, [categoriesList, genderFilter]);
+
+  const filteredGroupsList = useMemo(() => {
+    return groupsList.filter(g =>
+      g.gender ? g.gender === genderFilter : genderFilter === 'Putra'
+    );
+  }, [groupsList, genderFilter]);
   
   // Specific Filters
   const [selectedLembagaFilter, setSelectedLembagaFilter] = useState<string>('semua');
@@ -700,7 +713,7 @@ export default function DataAkademikSub({
     } else {
       const initialGroups: Record<string, string> = {};
       
-      categoriesList.forEach(cat => {
+      filteredCategories.forEach(cat => {
         if (students.length === 1) {
           // Pre-populate with student's current group for this category if it exists
           const asg = assignmentsList.find(a => a.santriId === students[0].id && a.kategoriId === cat.id);
@@ -802,7 +815,7 @@ export default function DataAkademikSub({
       // Rombongan Belajar assignment
       const santriIds = santriToEdit.map(s => s.id);
 
-      categoriesList.forEach(cat => {
+      filteredCategories.forEach(cat => {
         const action = selectedGroupsByCategory[cat.id];
         if (action === 'no_change') {
           // Keep existing assignment for this category (do nothing)
@@ -987,7 +1000,7 @@ export default function DataAkademikSub({
         dynamicHeaders.push(lem.nama);
       });
     } else {
-      categoriesList.forEach(cat => {
+      filteredCategories.forEach(cat => {
         dynamicHeaders.push(cat.nama);
       });
     }
@@ -1003,7 +1016,7 @@ export default function DataAkademikSub({
           dynamicValues.push(match ? match.className : '-');
         });
       } else {
-        categoriesList.forEach(cat => {
+        filteredCategories.forEach(cat => {
           const asg = assignmentsList.find(a => a.santriId === s.id && a.kategoriId === cat.id);
           const grp = asg ? groupsList.find(g => g.id === asg.kelompokId) : null;
           dynamicValues.push(grp ? grp.nama : '-');
@@ -1121,7 +1134,7 @@ export default function DataAkademikSub({
         dynamicHeaders.push(lem.nama);
       });
     } else {
-      categoriesList.forEach(cat => {
+      filteredCategories.forEach(cat => {
         dynamicHeaders.push(cat.nama);
       });
     }
@@ -1254,7 +1267,7 @@ export default function DataAkademikSub({
                   return `<td>${match ? match.className : '-'}</td>`;
                 }).join('');
               } else {
-                dynamicCellsHtml = categoriesList.map(cat => {
+                dynamicCellsHtml = filteredCategories.map(cat => {
                   const asg = assignmentsList.find(a => a.santriId === s.id && a.kategoriId === cat.id);
                   const grp = asg ? groupsList.find(g => g.id === asg.kelompokId) : null;
                   return `<td>${grp ? grp.nama : '-'}</td>`;
@@ -1406,7 +1419,7 @@ export default function DataAkademikSub({
         {academicType !== 'rombel' ? (
           activeLembagas.map(lem => renderSortHeader('lembaga_' + lem.id, lem.nama, false, '', getStyle()))
         ) : (
-          categoriesList.map(cat => renderSortHeader('rombel_' + cat.id, cat.nama, false, '', getStyle()))
+          filteredCategories.map(cat => renderSortHeader('rombel_' + cat.id, cat.nama, false, '', getStyle()))
         )}
       </tr>
     );
@@ -1863,7 +1876,7 @@ export default function DataAkademikSub({
                           <span>
                             {selectedCategoryFilter === 'semua'
                               ? 'Semua Kategori'
-                              : categoriesList.find(c => c.id === selectedCategoryFilter)?.nama || selectedCategoryFilter}
+                              : filteredCategories.find(c => c.id === selectedCategoryFilter)?.nama || selectedCategoryFilter}
                           </span>
                           <ChevronDown className="h-4 w-4 opacity-60 shrink-0" />
                         </button>
@@ -1898,7 +1911,7 @@ export default function DataAkademikSub({
                                     <span>Semua Kategori</span>
                                     {selectedCategoryFilter === 'semua' && <Check className="h-3.5 w-3.5 text-indigo-700 shrink-0" />}
                                   </button>
-                                  {categoriesList.map(cat => {
+                                  {filteredCategories.map(cat => {
                                     const isActive = selectedCategoryFilter === cat.id;
                                     return (
                                       <button
@@ -2110,7 +2123,10 @@ export default function DataAkademikSub({
           ) : (
             <table className="w-full border-collapse text-left text-sm text-slate-600 min-w-[1000px]">
               {/* STICKY HEADER always on top ("berada di atas selalu") */}
-              <thead className="bg-slate-50 text-xs font-semibold text-slate-400 uppercase tracking-wider select-none sticky top-0 z-30 shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
+              <thead
+                className="bg-slate-50 text-xs font-semibold text-slate-400 uppercase tracking-wider select-none sticky top-0 z-30 shadow-[0_2px_4px_rgba(0,0,0,0.02)]"
+                style={{ visibility: isScrolled ? 'hidden' : 'visible' }}
+              >
                 {renderTableHeadContents('bg-slate-50 text-slate-400 border-b border-slate-100')}
               </thead>
 
@@ -2490,7 +2506,7 @@ export default function DataAkademikSub({
                           );
                         })
                       ) : (
-                        categoriesList.map(cat => {
+                        filteredCategories.map(cat => {
                           const asg = assignmentsList.find(a => String(a.santriId) === String(s.id) && String(a.kategoriId) === String(cat.id));
                           const grp = asg ? groupsList.find(g => String(g.id) === String(asg.kelompokId)) : null;
                           const initialGroupVal = grp ? grp.id : 'none';
@@ -2873,7 +2889,7 @@ export default function DataAkademikSub({
                   </div>
                 ) : (
                   <div className="space-y-4.5 max-h-[350px] overflow-y-auto pr-1">
-                    {categoriesList.map(cat => {
+                    {filteredCategories.map(cat => {
                       const value = selectedGroupsByCategory[cat.id] || 'no_change';
                       return (
                         <div key={cat.id} className="space-y-1.5">

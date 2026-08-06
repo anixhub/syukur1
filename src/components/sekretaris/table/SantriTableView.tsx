@@ -1261,7 +1261,10 @@ export default function SantriTableView({
         />
       )}
       <table className="w-max min-w-full border-separate border-spacing-0 text-left text-sm text-slate-600 table-sticky-leakproof">
-        <thead className="text-xs font-semibold uppercase tracking-wider sticky top-0 z-35">
+        <thead
+          className="text-xs font-semibold uppercase tracking-wider sticky top-0 z-35"
+          style={{ visibility: isScrolled ? 'hidden' : 'visible' }}
+        >
           {renderTableHeadContents(scrolledHeaderClass)}
         </thead>
         <tbody className="divide-y divide-slate-100">

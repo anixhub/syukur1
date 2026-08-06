@@ -60,9 +60,26 @@ export default function RombelSub({
   }, [genderFilter]);
 
   const canWriteCurrent = selectedGender === 'Putra' ? canWritePutra : canWritePutri;
+
+  // Filter categories and groups strictly by selected gender
+  const filteredCategories = categoriesList.filter(c =>
+    c.gender ? c.gender === selectedGender : selectedGender === 'Putra'
+  );
+  const filteredGroupsList = groupsList.filter(g =>
+    g.gender ? g.gender === selectedGender : selectedGender === 'Putra'
+  );
+
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(() => {
-    return categoriesList[0]?.id || '';
+    return filteredCategories[0]?.id || '';
   });
+
+  useEffect(() => {
+    if (filteredCategories.length > 0 && !filteredCategories.some(c => c.id === selectedCategoryId)) {
+      setSelectedCategoryId(filteredCategories[0].id);
+    } else if (filteredCategories.length === 0) {
+      setSelectedCategoryId('');
+    }
+  }, [selectedGender, categoriesList]);
 
   const [activeGroupForDetail, setActiveGroupForDetail] = useState<KelompokRombel | null>(null);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -228,9 +245,9 @@ export default function RombelSub({
         <br/>
     `;
 
-    categoriesList.forEach((cat) => {
+    filteredCategories.forEach((cat) => {
       // Find groups belonging to this Category
-      const groupsInCat = groupsList.filter(g => g.kategoriId === cat.id);
+      const groupsInCat = filteredGroupsList.filter(g => g.kategoriId === cat.id);
       if (groupsInCat.length === 0) return;
 
       html += `
@@ -360,8 +377,8 @@ export default function RombelSub({
         <div class="meta">Laporan terkelompok per Kategori dan per Kelompok Rombel (${selectedGender}) • Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}</div>
     `;
 
-    categoriesList.forEach((cat) => {
-      const groupsInCat = groupsList.filter(g => g.kategoriId === cat.id);
+    filteredCategories.forEach((cat) => {
+      const groupsInCat = filteredGroupsList.filter(g => g.kategoriId === cat.id);
       if (groupsInCat.length === 0) return;
 
       html += `
@@ -504,14 +521,16 @@ export default function RombelSub({
       onUpdateCategory({
         ...categoryToEdit,
         nama: catNama.trim(),
-        deskripsi: catDeskripsi.trim()
+        deskripsi: catDeskripsi.trim(),
+        gender: categoryToEdit.gender || selectedGender
       });
     } else {
       const newId = 'R' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900);
       onAddCategory({
         id: newId,
         nama: catNama.trim(),
-        deskripsi: catDeskripsi.trim()
+        deskripsi: catDeskripsi.trim(),
+        gender: selectedGender
       });
       setSelectedCategoryId(newId);
     }
@@ -546,7 +565,8 @@ export default function RombelSub({
         ...rombelToEdit,
         nama: romNama.trim(),
         pembimbing: romPembimbing.trim() || '',
-        kuota: Number(romKuota)
+        kuota: Number(romKuota),
+        gender: rombelToEdit.gender || selectedGender
       });
       if (activeGroupForDetail?.id === rombelToEdit.id) {
         setActiveGroupForDetail({
@@ -562,15 +582,16 @@ export default function RombelSub({
         kategoriId: selectedCategoryId,
         nama: romNama.trim(),
         pembimbing: romPembimbing.trim() || '',
-        kuota: Number(romKuota)
+        kuota: Number(romKuota),
+        gender: selectedGender
       });
     }
     setIsRombelModalOpen(false);
   };
 
   // --- FILTERS & COMPUTED VALUES ---
-  const activeCategory = categoriesList.find(c => c.id === selectedCategoryId);
-  const activeRombels = groupsList.filter(g => g.kategoriId === selectedCategoryId);
+  const activeCategory = filteredCategories.find(c => c.id === selectedCategoryId);
+  const activeRombels = filteredGroupsList.filter(g => g.kategoriId === selectedCategoryId);
 
   // Get members mapping for groups, optionally filtered by gender
   const getMembersOfGroup = (groupId: string, genderFilter?: 'Putra' | 'Putri') => {
@@ -785,12 +806,12 @@ export default function RombelSub({
                   className="absolute left-0 mt-1.5 w-full md:w-72 rounded-2xl border border-slate-100 bg-white shadow-xl py-2 z-45 text-left"
                 >
                   <div className="max-h-64 overflow-y-auto py-1">
-                    {categoriesList.length === 0 ? (
+                    {filteredCategories.length === 0 ? (
                       <div className="px-4 py-3 text-xs text-slate-400 italic text-center">
                         Belum ada kategori terdaftar.
                       </div>
                     ) : (
-                      categoriesList.map((c) => {
+                      filteredCategories.map((c) => {
                         const isSelected = c.id === selectedCategoryId;
                         return (
                           <div
@@ -883,7 +904,7 @@ export default function RombelSub({
                               `Apakah Anda yakin ingin menghapus kategori rombel "${activeCategory.nama}"? Semua kelompok di bawahnya dan relasi anggotanya akan ikut terhapus permanen!`,
                               () => {
                                 onDeleteCategory(activeCategory.id);
-                                const remaining = categoriesList.filter(item => item.id !== activeCategory.id);
+                                const remaining = filteredCategories.filter(item => item.id !== activeCategory.id);
                                 setSelectedCategoryId(remaining[0]?.id || '');
                               }
                             );
@@ -2343,7 +2364,7 @@ export default function RombelSub({
                       >
                         <option value="Semua">Semua Kelompok</option>
                         <option value="Belum">Belum Tergabung</option>
-                        {groupsList
+                        {filteredGroupsList
                           .filter(g => g.kategoriId === selectedCategoryId && (!activeGroupForDetail || g.id !== activeGroupForDetail.id))
                           .map(g => (
                             <option key={g.id} value={g.id}>{g.nama}</option>

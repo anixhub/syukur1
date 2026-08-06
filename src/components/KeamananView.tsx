@@ -5465,7 +5465,10 @@ export default function KeamananView({
                           tableLayout: colWidths.length > 0 ? 'fixed' : 'auto',
                         }}
                       >
-                        <thead className="sticky top-0 z-35">
+                        <thead
+                          className="sticky top-0 z-35"
+                          style={{ visibility: isScrolled ? 'hidden' : 'visible' }}
+                        >
                           {renderTableHeadContents('bg-slate-50 text-slate-400 border-b border-slate-100', false)}
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
