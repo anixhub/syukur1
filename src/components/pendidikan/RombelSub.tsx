@@ -2490,8 +2490,8 @@ export default function RombelSub({
                       className="flex-1 overflow-y-auto pr-1 space-y-1.5 mb-2 min-h-0"
                       onScroll={(e) => {
                         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-                        if (scrollTop + clientHeight >= scrollHeight - 300) {
-                          setModalDisplayLimit(prev => prev + 50);
+                        if (scrollTop + clientHeight >= scrollHeight - 800) {
+                          setModalDisplayLimit(prev => prev + 100);
                         }
                       }}
                     >
@@ -2651,30 +2651,6 @@ export default function RombelSub({
                                     </div>
                                   );
                                 })}
-
-                                {!isCollapsed && section.items.length > visibleItems.length && (
-                                  <div className="py-2 px-3 my-1 bg-emerald-50/80 border border-emerald-200/80 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-                                    <span className="font-medium text-[11px] text-slate-700">
-                                      Menampilkan <strong className="text-emerald-700">{visibleItems.length}</strong> dari <strong className="text-slate-800">{section.items.length}</strong> santri ({section.label})
-                                    </span>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => setModalDisplayLimit(prev => prev + 50)}
-                                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
-                                      >
-                                        + Muat 50 Santri Lagi
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setModalDisplayLimit(prev => prev + section.items.length)}
-                                        className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-[10px] rounded-lg shadow-2xs transition-all cursor-pointer active:scale-95"
-                                      >
-                                        Muat Semua ({section.items.length})
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             );
                           })}
