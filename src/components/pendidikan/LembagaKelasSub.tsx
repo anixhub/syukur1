@@ -930,6 +930,66 @@ export default function LembagaKelasSub({
     }
   }, [activeTab, categoriesList, groupsList, assignmentsList, santriList, selectedGender, filteredLembagas, kelasList]);
 
+  // --- Academic Activity Participation Statistics ---
+  const statsAcademic = useMemo(() => {
+    const activeSantriList = santriList.filter(s =>
+      isGenderMatch(s.gender, selectedGender) && (s.statusKeanggotaan || 'Aktif') === 'Aktif'
+    );
+    const totalActive = activeSantriList.length;
+
+    // 1. Pendidikan Formal
+    const formalLembagas = lembagasList.filter(l => getLembagaJenis(l) === 'Formal' && isGenderMatch(l.gender, selectedGender));
+    const activeFormalList = activeSantriList.filter(s =>
+      formalLembagas.some(l => isStudentInLembaga(s, l)) ||
+      (s.pendidikanFormal && s.pendidikanFormal.trim() !== '' && s.pendidikanFormal !== 'TIDAK TERDAFTAR' && s.pendidikanFormal !== 'Belum / Non-Formal')
+    );
+    const activeFormalCount = activeFormalList.length;
+    const formalPct = totalActive > 0 ? Math.round((activeFormalCount / totalActive) * 100) : 0;
+
+    // Alumni participating in Pendidikan Formal
+    const alumniList = santriList.filter(s =>
+      isGenderMatch(s.gender, selectedGender) && s.statusKeanggotaan === 'Alumni'
+    );
+    const alumniFormalList = alumniList.filter(s =>
+      formalLembagas.some(l => isStudentInLembaga(s, l)) ||
+      (s.pendidikanFormal && s.pendidikanFormal.trim() !== '' && s.pendidikanFormal !== 'TIDAK TERDAFTAR' && s.pendidikanFormal !== 'Belum / Non-Formal')
+    );
+    const alumniFormalCount = alumniFormalList.length;
+
+    // 2. Pendidikan Internal Pondok
+    const internalLembagas = lembagasList.filter(l => getLembagaJenis(l) === 'Internal' && isGenderMatch(l.gender, selectedGender));
+    const activeInternalList = activeSantriList.filter(s =>
+      internalLembagas.some(l => isStudentInLembaga(s, l)) ||
+      (s.pendidikanInternal && s.pendidikanInternal.trim() !== '' && s.pendidikanInternal !== 'Belum / Non-Madin')
+    );
+    const activeInternalCount = activeInternalList.length;
+    const internalPct = totalActive > 0 ? Math.round((activeInternalCount / totalActive) * 100) : 0;
+
+    // 3. Rombongan Belajar
+    const targetGroups = groupsList.filter(g => (g.gender ? g.gender === selectedGender : selectedGender === 'Putra'));
+    const activeRombelList = activeSantriList.filter(s => {
+      const assignedGroupIds = assignmentsList
+        .filter(a => a.santriId === s.id)
+        .map(a => a.kelompokId);
+      return targetGroups.some(g => assignedGroupIds.includes(g.id));
+    });
+    const activeRombelCount = activeRombelList.length;
+    const rombelPct = totalActive > 0 ? Math.round((activeRombelCount / totalActive) * 100) : 0;
+
+    return {
+      totalActive,
+      formal: { count: activeFormalCount, pct: formalPct, alumniCount: alumniFormalCount },
+      internal: { count: activeInternalCount, pct: internalPct },
+      rombel: { count: activeRombelCount, pct: rombelPct }
+    };
+  }, [santriList, lembagasList, groupsList, assignmentsList, selectedGender]);
+
+  const currentActiveTabStats = useMemo(() => {
+    if (activeTab === 'Formal') return statsAcademic.formal;
+    if (activeTab === 'Internal') return statsAcademic.internal;
+    return statsAcademic.rombel;
+  }, [activeTab, statsAcademic]);
+
   // --- Dynamic Unified Classes Builder ---
   const subClasses = useMemo(() => {
     if (!selectedLembaga) return [];
@@ -2192,7 +2252,7 @@ export default function LembagaKelasSub({
       {/* 2. Full Width Horizontal Tab Bar (HIDDEN WHEN IN split-view) */}
       {!selectedLembaga && (
         <div className="w-full border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
-          <div className="flex space-x-8">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto pb-1 sm:pb-0">
             <button
               onClick={() => handleTabChange('Formal')}
               className={`pb-4 text-sm font-bold tracking-tight border-b-2 transition-all cursor-pointer ${
@@ -2203,6 +2263,7 @@ export default function LembagaKelasSub({
             >
               Pendidikan Formal
             </button>
+
             <button
               onClick={() => handleTabChange('Internal')}
               className={`pb-4 text-sm font-bold tracking-tight border-b-2 transition-all cursor-pointer ${
@@ -2213,6 +2274,7 @@ export default function LembagaKelasSub({
             >
               Pendidikan Internal Pondok
             </button>
+
             <button
               onClick={() => handleTabChange('Rombel')}
               className={`pb-4 text-sm font-bold tracking-tight border-b-2 transition-all cursor-pointer ${
@@ -2228,12 +2290,36 @@ export default function LembagaKelasSub({
           {canWriteCurrent && (
             <button
               onClick={() => handleOpenLembagaModal()}
-              className="mb-3 sm:mb-0 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+              className="mb-3 sm:mb-0 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer shrink-0"
             >
               <Plus className="h-4 w-4" />
               <span>{activeTab === 'Rombel' ? 'Buat Kategori Rombel' : 'Buat Lembaga'}</span>
             </button>
           )}
+        </div>
+      )}
+
+      {/* Minimalist Participation Progress Bar & Stats */}
+      {!selectedLembaga && (
+        <div className="flex items-center gap-3 bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Santri Aktif:</span>
+          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+            <motion.div 
+              className="h-full bg-emerald-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(currentActiveTabStats.pct, 100)}%` }}
+              transition={{ duration: 0.4 }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 whitespace-nowrap">
+            <span>{currentActiveTabStats.count}/{statsAcademic.totalActive}</span>
+            <span className="text-slate-400 font-semibold text-[11px]">({currentActiveTabStats.pct}%)</span>
+            {activeTab === 'Formal' && statsAcademic.formal.alumniCount > 0 && (
+              <span className="ml-1 bg-amber-50 text-amber-700 border border-amber-200/80 px-1.5 py-0.5 rounded-md text-[10px] font-bold">
+                +{statsAcademic.formal.alumniCount} Alumni
+              </span>
+            )}
+          </div>
         </div>
       )}
 

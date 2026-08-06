@@ -24,9 +24,11 @@ import {
   ChevronsUpDown,
   ChevronDown,
   MoreVertical,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck,
+  GraduationCap
 } from 'lucide-react';
-import { Santri, Lembaga, Kelas, KategoriRombel, KelompokRombel, RombelAssignment, isEmisTerdaftar } from '../../types';
+import { Santri, Lembaga, Kelas, KategoriRombel, KelompokRombel, RombelAssignment, isEmisTerdaftar, isGenderMatch } from '../../types';
 import { demoteSantriToCalonPesertaDidik, parseCatatanInvalid } from '../../lib/utils';
 import { renderSantriAvatar, getPesantrenProfile, calculateRealtimeAge } from '../SekretarisHelper';
 import SantriDetailModal from '../sekretaris/SantriDetailModal';
@@ -119,6 +121,59 @@ export default function DataAkademikSub({
       g.gender ? g.gender === genderFilter : genderFilter === 'Putra'
     );
   }, [groupsList, genderFilter]);
+
+  // Academic Activity Participation Statistics
+  const statsAcademic = useMemo(() => {
+    const activeSantriList = santriList.filter(s =>
+      isGenderMatch(s.gender, genderFilter) && (s.statusKeanggotaan || 'Aktif') === 'Aktif'
+    );
+    const totalActive = activeSantriList.length;
+
+    // 1. Formal
+    const activeFormalList = activeSantriList.filter(s =>
+      s.pendidikanFormal && s.pendidikanFormal.trim() !== '' && s.pendidikanFormal !== 'TIDAK TERDAFTAR' && s.pendidikanFormal !== 'Belum / Non-Formal'
+    );
+    const activeFormalCount = activeFormalList.length;
+    const formalPct = totalActive > 0 ? Math.round((activeFormalCount / totalActive) * 100) : 0;
+
+    const alumniList = santriList.filter(s =>
+      isGenderMatch(s.gender, genderFilter) && s.statusKeanggotaan === 'Alumni'
+    );
+    const alumniFormalList = alumniList.filter(s =>
+      s.pendidikanFormal && s.pendidikanFormal.trim() !== '' && s.pendidikanFormal !== 'TIDAK TERDAFTAR' && s.pendidikanFormal !== 'Belum / Non-Formal'
+    );
+    const alumniFormalCount = alumniFormalList.length;
+
+    // 2. Internal
+    const activeInternalList = activeSantriList.filter(s =>
+      s.pendidikanInternal && s.pendidikanInternal.trim() !== '' && s.pendidikanInternal !== 'Belum / Non-Madin'
+    );
+    const activeInternalCount = activeInternalList.length;
+    const internalPct = totalActive > 0 ? Math.round((activeInternalCount / totalActive) * 100) : 0;
+
+    // 3. Rombel
+    const activeRombelList = activeSantriList.filter(s => {
+      const assignedGroupIds = assignmentsList
+        .filter(a => a.santriId === s.id)
+        .map(a => a.kelompokId);
+      return filteredGroupsList.some(g => assignedGroupIds.includes(g.id));
+    });
+    const activeRombelCount = activeRombelList.length;
+    const rombelPct = totalActive > 0 ? Math.round((activeRombelCount / totalActive) * 100) : 0;
+
+    return {
+      totalActive,
+      formal: { count: activeFormalCount, pct: formalPct, alumniCount: alumniFormalCount },
+      internal: { count: activeInternalCount, pct: internalPct },
+      rombel: { count: activeRombelCount, pct: rombelPct }
+    };
+  }, [santriList, filteredGroupsList, assignmentsList, genderFilter]);
+
+  const currentAcademicStats = useMemo(() => {
+    if (academicType === 'formal') return statsAcademic.formal;
+    if (academicType === 'internal') return statsAcademic.internal;
+    return statsAcademic.rombel;
+  }, [academicType, statsAcademic]);
   
   // Specific Filters
   const [selectedLembagaFilter, setSelectedLembagaFilter] = useState<string>('semua');
@@ -1554,6 +1609,28 @@ export default function DataAkademikSub({
           >
             <Download className="h-4.5 w-4.5 shrink-0" />
           </button>
+        </div>
+      </div>
+
+      {/* Minimalist Participation Progress Bar & Stats */}
+      <div className="flex items-center gap-3 bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+        <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Santri Aktif:</span>
+        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+          <motion.div 
+            className="h-full bg-indigo-500 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(currentAcademicStats.pct, 100)}%` }}
+            transition={{ duration: 0.4 }}
+          />
+        </div>
+        <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700 whitespace-nowrap">
+          <span>{currentAcademicStats.count}/{statsAcademic.totalActive}</span>
+          <span className="text-slate-400 font-semibold text-[11px]">({currentAcademicStats.pct}%)</span>
+          {academicType === 'formal' && statsAcademic.formal.alumniCount > 0 && (
+            <span className="ml-1 bg-amber-50 text-amber-700 border border-amber-200/80 px-1.5 py-0.5 rounded-md text-[10px] font-bold">
+              +{statsAcademic.formal.alumniCount} Alumni
+            </span>
+          )}
         </div>
       </div>
 
