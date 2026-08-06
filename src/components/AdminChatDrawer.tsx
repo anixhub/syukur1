@@ -577,18 +577,7 @@ export default function AdminChatDrawer({
       const isFarFromBottom = distanceFromBottom > 100;
       setShowScrollBottomBtn(isFarFromBottom);
 
-      if (isFarFromBottom) {
-        const containerBottom = scrollTop + clientHeight;
-        const msgElements = scrollContainerRef.current.querySelectorAll('[id^="msg-"]');
-        let countBelow = 0;
-        msgElements.forEach((el) => {
-          const htmlEl = el as HTMLElement;
-          if (htmlEl.offsetTop > containerBottom - 40) {
-            countBelow++;
-          }
-        });
-        setUnreadBelowCount(countBelow);
-      } else {
+      if (!isFarFromBottom) {
         setUnreadBelowCount(0);
       }
     }
@@ -885,18 +874,38 @@ export default function AdminChatDrawer({
   // WebSocket Sync & Background Real-Time Polling
   useEffect(() => {
     const unsubscribe = subscribeRealtimeChanges((payload: any) => {
+      const myUname = (localStorage.getItem('smartsantri_active_username') || '').trim().toLowerCase();
+
       if (payload.type === 'admin_chat_message' && payload.message) {
         const normalized = normalizeChatMessage(payload.message);
+        const sender = (normalized.sender_username || normalized.sender || '').trim().toLowerCase();
+        const isFromMe = myUname && sender === myUname;
+
+        let isNew = false;
         setMessages(prev => {
           const exists = prev.some(m => String(m.id) === String(normalized.id));
           if (exists) {
             return prev.map(m => String(m.id) === String(normalized.id) ? { ...m, ...normalized } : m);
           }
+          isNew = true;
           const updated = [...prev, normalized];
           safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
           return updated;
         });
-        setTimeout(scrollToBottom, 50);
+
+        if (isNew) {
+          if (scrollContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+            const isFarFromBottom = scrollHeight - (scrollTop + clientHeight) > 100;
+            if (isFarFromBottom && !isFromMe) {
+              setUnreadBelowCount(prev => prev + 1);
+            } else {
+              setTimeout(scrollToBottom, 50);
+            }
+          } else {
+            setTimeout(scrollToBottom, 50);
+          }
+        }
       } else if (payload.type === 'admin_chat_update' && payload.message) {
         const normalized = normalizeChatMessage(payload.message);
         setMessages(prev => {
@@ -914,6 +923,8 @@ export default function AdminChatDrawer({
         if (payload.data) {
           const items = Array.isArray(payload.data) ? payload.data : [payload.data];
           const normalizedItems = items.map(normalizeChatMessage);
+          let insertedCountFromOthers = 0;
+
           setMessages(prev => {
             let updated = [...prev];
             normalizedItems.forEach(item => {
@@ -925,14 +936,31 @@ export default function AdminChatDrawer({
                   updated[idx] = { ...updated[idx], ...item };
                 } else {
                   updated.push(item);
+                  if (payload.action === 'insert') {
+                    const sender = (item.sender_username || item.sender || '').trim().toLowerCase();
+                    if (!myUname || sender !== myUname) {
+                      insertedCountFromOthers++;
+                    }
+                  }
                 }
               }
             });
             safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
             return updated;
           });
+
           if (payload.action === 'insert') {
-            setTimeout(scrollToBottom, 50);
+            if (scrollContainerRef.current) {
+              const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+              const isFarFromBottom = scrollHeight - (scrollTop + clientHeight) > 100;
+              if (isFarFromBottom && insertedCountFromOthers > 0) {
+                setUnreadBelowCount(prev => prev + insertedCountFromOthers);
+              } else {
+                setTimeout(scrollToBottom, 50);
+              }
+            } else {
+              setTimeout(scrollToBottom, 50);
+            }
           }
         }
       }

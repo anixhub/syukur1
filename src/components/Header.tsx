@@ -412,10 +412,12 @@ export default function Header({
               <MessageSquare className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
               {hasMentionNotification ? (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-purple-600 text-white font-extrabold text-[10px] shadow-xs">
-                  @
+                  {unreadChatCount > 0 ? (unreadChatCount > 99 ? '99+' : unreadChatCount) : '@'}
                 </span>
               ) : unreadChatCount > 0 ? (
-                <span className="absolute top-1 right-1 flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-emerald-600 text-white font-extrabold text-[10px] shadow-xs">
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
               ) : null}
             </button>
 
@@ -432,14 +434,9 @@ export default function Header({
                 <Bell className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
                 {pendingRegistrationsCount > 0 ? (
                   <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-white font-extrabold text-[10px] shadow-xs animate-pulse">
-                    {pendingRegistrationsCount}
+                    {pendingRegistrationsCount > 99 ? '99+' : pendingRegistrationsCount}
                   </span>
-                ) : (
-                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
-                  </span>
-                )}
+                ) : null}
               </button>
 
               {/* Notification Popover Dropdown */}
